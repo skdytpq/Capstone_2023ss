@@ -106,7 +106,7 @@ class Data:
     Basic dataset class.
     """
 
-    def __init__(self, d=str(), pruning=False):
+    def __init__(self, d, pruning=False):
         self.directory = d
         if pruning:
             self.read_all(p="_p" + pruning)
