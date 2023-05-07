@@ -1,5 +1,5 @@
 # Dataset, splits, generators, evaluator and abstract model handlers
-
+ 
 from sklearn.manifold import TSNE
 import matplotlib
 import bottleneck as bn
@@ -14,7 +14,7 @@ import argparse
 import os
 import torch
 import pdb
-
+from sklearn.feature_extraction.text import CountVectorizer
 DEFAULT_SEED = 42
 
 SEED = DEFAULT_SEED
@@ -118,11 +118,11 @@ class Data:
         self.split = None
 
     def train_tokenizer(self):
-        self.toki = tf.keras.preprocessing.text.Tokenizer() # 텍스트 토크나이저 불러오기
+        self.toki = CountVectorizer() # 텍스트 토크나이저 불러오기
         # bz_toki = rec.Itemizer()
         # bz_toki.fit_on_texts(stats.itemid.to_list())
-        self.toki.fit_on_texts(self.items_sorted.itemid.to_list())
-        _, self.num_words = self.toki.texts_to_matrix(['xx']).shape
+        self.toki = self.toki.fit_transform((self.items_sorted.itemid.to_list())
+        _, self.num_words = self.toki.toarray()
         print("Tokenizer trained for", self.num_words, "items.")
 
     def create_splits(self, n, k_test, shuffle=True, n_fold=True, generators=True, batch_size=1024):
@@ -212,7 +212,7 @@ class Data:
         self.read_users(p)
         self.read_items(p)
         # self.read_purchases(p)
-        self.read_purchases_txt(p)
+        self.read_purchases_txt(p) # 모집단 데이터
         self.read_items_sorted(p)
         self.read_users_sorted(p)
         print("Read all in", time() - now)
@@ -365,17 +365,17 @@ class SplitGenerator(tf.keras.utils.Sequence):
         self.batch_size = batch_size
         return self
 
-    def on_epoch_end(self):
+    def on_epoch_end(self): # 각 epoch가 끝날 때 
         if self.random_batching:
             self.data = self.data.sample(frac=1)
 
-        self.data['temp_itemids_p'] = self.data['itemids'].apply(shufflestr) # 아이템 list 를 섞은 후 다시 return 
+        self.data['temp_itemids_p'] = self.data['itemids'].apply(shufflestr) # 
         self.data['temp_itemids_p1_50'] = self.data['temp_itemids_p'].apply(split1_50) # 각 비율로 자르기 
         self.data['temp_itemids_p2_50'] = self.data['temp_itemids_p'].apply(split2_50)
         self.data['temp_itemids_p_25'] = self.data['temp_itemids_p'].apply(split25)
         self.data['temp_itemids_p_75'] = self.data['temp_itemids_p'].apply(split75)
         self.data_np = self.data.to_numpy()
- 
+    
     def get_basket_np(self, items):
         if self.n_ratings:
             return np.vstack([self.embeddings_dict.get(x, self.null_val) for x in items.split(',')])
@@ -406,7 +406,6 @@ class SplitGenerator(tf.keras.utils.Sequence):
         if self.p2575_splits or self.p7525_splits or self.p2525_splits or self.p7575_splits:
             data_slice4 = self.data_np[self.batch_size * index4:self.batch_size * index4 + self.batch_size]
             data_slice5 = self.data_np[self.batch_size * index5:self.batch_size * index5 + self.batch_size]
-        pdb.set_trace()
         ret_x = []
         ret_y = []
 
@@ -423,7 +422,7 @@ class SplitGenerator(tf.keras.utils.Sequence):
                 ret_y.append(self.toki.texts_to_matrix(data_slice2[:, 4], mode=mod))
                 ret_y.append(self.toki.texts_to_matrix(data_slice3[:, 3], mode=mod))
             else:
-                ret_y.append(self.toki.texts_to_matrix(data_slice2[:, 3], mode=mod))
+                ret_y.append(self.toki.texts_to_matrix(data_slice2[:, 3], mode=mod)) # batch 27000
                 ret_y.append(self.toki.texts_to_matrix(data_slice3[:, 4], mode=mod))
 
         if self.p2575_splits:
