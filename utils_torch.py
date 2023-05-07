@@ -116,6 +116,8 @@ class Movielens(data.Dataset):
         self.data_np = self.txt_file
         self.toki = toki
         self.batch_size = batch_size
+        if self.mode != 'train':
+            self.batch_size = 128
         self.random_batching = False
         if self.mode == 'train':
             self.randombatching = True
